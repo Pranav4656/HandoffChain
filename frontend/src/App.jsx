@@ -14,29 +14,19 @@ function App() {
   });
 
   const [receipt, setReceipt] = useState(null);
-  const [riskResult, setRiskResult] = useState(null);
   const [anchorResult, setAnchorResult] = useState(null);
   const [verifyResult, setVerifyResult] = useState(null);
   const [tamperResult, setTamperResult] = useState(null);
 
   const [error, setError] = useState("");
-  const [riskError, setRiskError] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [riskLoading, setRiskLoading] = useState(false);
   const [anchorLoading, setAnchorLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [tamperLoading, setTamperLoading] = useState(false);
 
-  const [openBot, setOpenBot] = useState(null);
-  const [botMessage, setBotMessage] = useState({
-    luna: "Psst… the night shift is safer when every handoff leaves a trace. ✨",
-    moss: "Hi! I can point out how the handoff flow works. Tap me anytime!"
-  });
-
   const [workflow, setWorkflow] = useState({
     create: true,
-    risk: false,
     sign: false,
     accept: false,
     receipt: false,
@@ -53,75 +43,21 @@ function App() {
     }));
   };
 
-  const assessRisk = async () => {
-    setRiskLoading(true);
-    setRiskError("");
-
-    try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/handoffs/risk",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || `Risk assessment returned ${response.status}`
-        );
-      }
-
-      if (!data.success) {
-        throw new Error(
-          data.message || "Unable to assess handoff risk"
-        );
-      }
-
-      setRiskResult(data);
-
-      setWorkflow((previous) => ({
-        ...previous,
-        risk: true,
-      }));
-
-      return data;
-    } catch (err) {
-      console.error(err);
-
-      setRiskError(
-        err.message ||
-          "Unable to assess handoff risk. Make sure the FastAPI backend is running."
-      );
-
-      return null;
-    } finally {
-      setRiskLoading(false);
-    }
-  };
 
   const createHandoff = async (event) => {
     event.preventDefault();
 
     setLoading(true);
     setError("");
-    setRiskError("");
 
     setReceipt(null);
-    setRiskResult(null);
     setAnchorResult(null);
     setVerifyResult(null);
     setTamperResult(null);
 
     setWorkflow({
       create: true,
-      risk: false,
-      sign: false,
+        sign: false,
       accept: false,
       receipt: false,
       anchor: false,
@@ -148,11 +84,8 @@ function App() {
       setWorkflow((previous) => ({
         ...previous,
         create: true,
-        receipt: true,
       }));
 
-      // Run ML risk assessment using the same handoff data.
-      await assessRisk();
     } catch (err) {
       console.error(err);
 
@@ -183,6 +116,7 @@ function App() {
     setWorkflow((previous) => ({
       ...previous,
       accept: true,
+      receipt: true,
     }));
   };
 
@@ -336,38 +270,32 @@ function App() {
       description: "Create handoff",
     },
     {
-      key: "risk",
-      number: "02",
-      label: "RISK",
-      description: "ML assessment",
-    },
-    {
       key: "sign",
-      number: "03",
+      number: "02",
       label: "SIGN",
       description: "Outgoing analyst",
     },
     {
       key: "accept",
-      number: "04",
+      number: "03",
       label: "ACCEPT",
       description: "Incoming analyst",
     },
     {
       key: "receipt",
-      number: "05",
+      number: "04",
       label: "RECEIPT",
       description: "SHA-256 proof",
     },
     {
       key: "anchor",
-      number: "06",
+      number: "05",
       label: "ANCHOR",
       description: "Blockchain",
     },
     {
       key: "verify",
-      number: "07",
+      number: "06",
       label: "VERIFY",
       description: "Integrity check",
     },
@@ -704,111 +632,6 @@ function App() {
                   <strong>{receipt.created_at}</strong>
                 </div>
 
-                {/* ML RISK ASSESSMENT */}
-                {riskResult && (
-                  <div className="risk-card">
-                    <div className="risk-header">
-                      <div>
-                        <div className="risk-title">
-                          ML Handoff Risk Assessment
-                        </div>
-
-                        <div className="risk-subtitle">
-                          Random Forest prioritization
-                        </div>
-                      </div>
-
-                      <div
-                        className={`risk-level risk-${riskResult.risk.risk_level.toLowerCase()}`}
-                      >
-                        {riskResult.risk.risk_level}
-                      </div>
-                    </div>
-
-                    <div className="risk-score-row">
-                      <div className="risk-score">
-                        {riskResult.risk.risk_score}
-                      </div>
-
-                      <div className="risk-score-label">
-                        <span>RISK SCORE</span>
-                        <strong>/ 100</strong>
-                      </div>
-                    </div>
-
-                    <div className="risk-meter">
-                      <div
-                        className="risk-meter-fill"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            Math.max(
-                              0,
-                              riskResult.risk.risk_score
-                            )
-                          )}%`,
-                        }}
-                      ></div>
-                    </div>
-
-                    <div className="risk-reasons">
-                      <div className="risk-reasons-title">
-                        Assessment Factors
-                      </div>
-
-                      {riskResult.risk.reasons.map(
-                        (reason, index) => (
-                          <div
-                            className="risk-reason"
-                            key={index}
-                          >
-                            <span>•</span>
-                            <span>{reason}</span>
-                          </div>
-                        )
-                      )}
-                    </div>
-
-                    <div className="risk-model">
-                      Model:{" "}
-                      <strong>
-                        {riskResult.risk.model}
-                      </strong>
-                    </div>
-                  </div>
-                )}
-
-                {riskError && (
-                  <div className="risk-error">
-                    <strong>Risk assessment unavailable</strong>
-                    <p>{riskError}</p>
-
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={assessRisk}
-                      disabled={riskLoading}
-                    >
-                      {riskLoading
-                        ? "ASSESSING..."
-                        : "RETRY RISK ASSESSMENT"}
-                    </button>
-                  </div>
-                )}
-
-                {riskLoading && !riskResult && (
-                  <div className="risk-loading">
-                    <div className="risk-loading-title">
-                      ML Risk Assessment
-                    </div>
-
-                    <div>
-                      Random Forest is evaluating the
-                      handoff...
-                    </div>
-                  </div>
-                )}
-
                 <div className="hash-section">
                   <div className="hash-label">
                     SHA-256 RECEIPT HASH
@@ -1022,24 +845,6 @@ function App() {
           </aside>
         </section>
       </main>
-
-      <div className="night-sky-decoration" aria-hidden="true">
-        <span className="star star-one">✦</span><span className="star star-two">·</span>
-        <span className="star star-three">✧</span><span className="star star-four">·</span>
-      </div>
-
-      <div className="bot-dock" aria-label="Interactive robot companions">
-        <div className={`bot-companion bot-luna ${openBot === "luna" ? "bot-open" : ""}`}>
-          {openBot === "luna" && <div className="bot-bubble"><strong>Luna <span>☾</span></strong><p>{botMessage.luna}</p><button type="button" onClick={() => setBotMessage((m) => ({ ...m, luna: receipt ? `Handoff ${receipt.handoff_id || "created"} is in your receipt panel. Keep the original incident details off-chain.` : "Start by filling in the incident details, then create the handoff. I’ll be cheering from the moon." }))}>Tell me more ✦</button></div>}
-          <button type="button" className="bot-avatar luna-avatar" aria-label="Talk to Luna" aria-expanded={openBot === "luna"} onClick={() => setOpenBot(openBot === "luna" ? null : "luna")}><span className="bot-antenna"></span><span className="bot-face"><i></i><i></i><b>⌣</b></span><span className="bot-body"><i>✦</i></span></button>
-          <span className="bot-name">LUNA <small>moon buddy</small></span>
-        </div>
-        <div className={`bot-companion bot-moss ${openBot === "moss" ? "bot-open" : ""}`}>
-          {openBot === "moss" && <div className="bot-bubble"><strong>Moss <span>☘</span></strong><p>{botMessage.moss}</p><button type="button" onClick={() => setBotMessage((m) => ({ ...m, moss: anchorResult ? "Nice! Your receipt has been anchored. You can now run VERIFY INTEGRITY to compare the current data with the blockchain proof." : workflow.accept ? "You’re ready to anchor the accepted handoff. The blockchain stores its hash, not the sensitive handoff itself." : "The path is Create → Sign → Accept → Anchor → Verify. Signing and acceptance here are demo workflow steps." }))}>Guide me ♡</button></div>}
-          <button type="button" className="bot-avatar moss-avatar" aria-label="Talk to Moss" aria-expanded={openBot === "moss"} onClick={() => setOpenBot(openBot === "moss" ? null : "moss")}><span className="bot-antenna"></span><span className="bot-face"><i></i><i></i><b>ᴗ</b></span><span className="bot-body"><i>♡</i></span></button>
-          <span className="bot-name">MOSS <small>little guardian</small></span>
-        </div>
-      </div>
     </div>
   );
 }
